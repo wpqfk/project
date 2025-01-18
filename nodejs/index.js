@@ -31,7 +31,7 @@ connection.connect((err) => {
 
 // 미들웨어 설정
 app.use(cookieParser());
-app.use(express.json());
+app.use(express.json()); // 요청 본문을 JSON으로 파싱
 app.use(cors({
   origin: 'http://localhost:3000', // React 앱이 실행 중인 URL
   credentials: true, // 쿠키와 자격 증명 처리
@@ -71,31 +71,6 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
-// 사용자 프로필 사진 업로드 API
-app.post('/uploadProfileImage', authenticateToken, (req, res) => {
-  upload(req, res, (err) => {
-    if (err) {
-      return res.status(400).json({ error: '파일 업로드 실패', details: err.message });
-    }
-
-    // 업로드가 성공하면 파일의 경로를 데이터베이스에 저장 (예시)
-    const imageUrl = `/uploads/${req.file.filename}`;
-
-    // 데이터베이스에서 해당 사용자의 프로필 사진 URL 업데이트
-    const query = 'UPDATE users SET profileImage = ? WHERE id = ?';
-    connection.query(query, [imageUrl, req.user.id], (err, result) => {
-      if (err) {
-        return res.status(500).json({ error: '프로필 사진 업데이트 실패', details: err.message });
-      }
-
-      res.json({ message: '프로필 사진 업로드 성공', imageUrl });
-    });
-  });
-});
-
-// 업로드된 이미지를 클라이언트가 접근할 수 있도록 static 경로 설정
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
 // 로그인 API
 app.post('/login', (req, res) => {
   const { id, password } = req.body;
@@ -130,7 +105,6 @@ app.post('/login', (req, res) => {
   });
 });
 
-
 // 사용자 정보 조회 API (마이페이지)
 app.get('/mypage', authenticateToken, (req, res) => {
   // 로그인된 사용자의 정보를 가져오기 위해 토큰에서 user id를 가져와서 사용자 정보 쿼리
@@ -154,12 +128,12 @@ app.get('/mypage', authenticateToken, (req, res) => {
   });
 });
 
-// 서버 코드 (Express)
-
+// 게시물 조회 API
 app.get('/posts', (req, res) => {
-  const query = 'SELECT posts_id, title FROM posts'; // 게시물 ID와 제목을 가져옵니다.
+  const query = 'SELECT posts_id, title FROM posts'; 
   connection.query(query, (err, results) => {
     if (err) {
+      console.error('Database query error:', err);  // 쿼리 실행 오류 로그 추가
       return res.status(500).json({ error: '게시물 조회 실패', details: err.message });
     }
     res.json(results); // 데이터베이스에서 가져온 게시물 목록을 반환
@@ -168,25 +142,57 @@ app.get('/posts', (req, res) => {
 
 // 게시물 상세 정보 조회 API
 app.get('/posts/:id', (req, res) => {
-  const postId = req.params.id; // URL에서 게시물 ID를 가져옵니다.
-  const query = 'SELECT * FROM posts WHERE posts_id = ?'; // 게시물 ID로 상세 정보 조회
+  const postId = req.params.id; 
+  const query = 'SELECT * FROM posts WHERE posts_id = ?'; 
 
   connection.query(query, [postId], (err, results) => {
     if (err) {
+      console.error('Database query error:', err);  // 쿼리 오류 로그 추가
       return res.status(500).json({ error: '게시물 조회 실패', details: err.message });
     }
     if (results.length === 0) {
       return res.status(404).json({ error: '게시물을 찾을 수 없습니다.' });
     }
 
-    // 게시물 정보 반환
-    res.json(results[0]); // 첫 번째 결과만 반환
+    res.json(results[0]); 
   });
 });
 
+// 게시물 작성 API
+app.post('/posts', authenticateToken, (req, res) => {
+  const { title, content } = req.body;
+  const userId = req.user.id;  // 로그인한 사용자의 ID
 
+  if (!title || !content) {
+    return res.status(400).send('제목과 내용을 모두 입력해주세요.');
+  }
 
-// 서버 포트 8080번으로 실행
+  // 게시물 작성 쿼리
+  const query = 'INSERT INTO posts (title, content, user_id) VALUES (?, ?, ?)';
+  connection.query(query, [title, content, userId], (err, result) => {
+    if (err) {
+      console.error('Database query error:', err);  // 쿼리 오류 로그 추가
+      return res.status(500).send('서버 오류');
+    }
+
+    console.log('New post inserted with ID:', result.insertId);  // 삽입된 게시물 ID 로그
+    res.status(201).json({ posts_id: result.insertId, title, content });
+  });
+});
+
+// 404 오류 처리 미들웨어
+app.use((req, res) => {
+  console.error(`404 오류: 요청한 경로를 찾을 수 없음 - ${req.originalUrl}`);  // 404 오류 로그
+  res.status(404).json({ error: '요청하신 페이지를 찾을 수 없습니다.' });
+});
+
+// 예기치 않은 오류 처리 미들웨어
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err);  // 예기치 않은 오류 로그
+  res.status(500).json({ error: '서버 오류', details: err.message });
+});
+
+// 서버 실행
 app.listen(port, (err) => {
   if (err) {
     console.error('서버 실행 중 오류가 발생했습니다:', err);

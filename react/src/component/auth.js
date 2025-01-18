@@ -27,19 +27,24 @@ export const AuthProvider = ({ children }) => {
   }, [accessToken]);
 
   const login = async (id, password) => {
-    const response = await fetch('http://localhost:8080/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, password }),
-    });
+    try {
+      const response = await fetch('http://localhost:8080/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, password }),
+      });
 
-    if (!response.ok) {
-      throw new Error('로그인 실패');
+      if (!response.ok) {
+        throw new Error('로그인 실패');
+      }
+
+      const data = await response.json();
+      setAccessToken(data.accessToken);  // 로그인 성공 시 상태 업데이트
+      console.log('Login Success:', data.accessToken); // 여기서 확인
+    } catch (error) {
+      console.error('Login Error:', error.message);
+      throw error;  // 오류를 상위 컴포넌트로 전달하거나 적절히 처리
     }
-
-    const data = await response.json();
-    setAccessToken(data.accessToken);  // 로그인 성공 시 상태 업데이트
-    console.log('Login Success:', data.accessToken); // 여기서 확인
   };
 
   const logout = () => {

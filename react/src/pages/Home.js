@@ -34,6 +34,12 @@ function Home() {
           <Link to="/Mypage">
             <button>마이페이지</button>
           </Link>
+          <Link to="/CreatePosts">
+            <button>글쓰기</button>
+          </Link>
+          <Link to="/posts">
+            <button>게시판</button>
+          </Link>
           <button onClick={handleLogout}>로그아웃</button>
         </div>
       )}

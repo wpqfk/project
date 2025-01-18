@@ -6,6 +6,8 @@ import Signup from './pages/Signup';
 import Posts from './pages/posts';
 import Mypage from './pages/Mypage'; 
 import PostDetail from './pages/postDetail'; // PostDetail 컴포넌트 추가
+import CreatePost from './pages/CreatePosts'; 
+
 
 function App() {
   return (
@@ -17,6 +19,7 @@ function App() {
         <Route path="/Mypage" element={<Mypage />} />
         <Route path="/posts" element={<Posts />} />
         <Route path="/posts/:id" element={<PostDetail />} /> {/* 게시물 상세 페이지 */}
+        <Route path="/CreatePosts" element={<CreatePost />} /> 
       </Routes>
     </BrowserRouter>
   );
